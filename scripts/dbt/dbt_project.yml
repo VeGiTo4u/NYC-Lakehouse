@@ -1,0 +1,49 @@
+name: "nyc_lakehouse_dbt"
+version: "1.0.0"
+config-version: 2
+
+profile: "default" # Based on the debug log, the configured profile was 'dev'. Change if needed.
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  # Defined in section 7.5 of High-Level Architecture for dynamic lookback windows
+  lookback_days_default: 90
+  lookback_days_nypd: 200
+
+models:
+  nyc_lakehouse_dbt:
+    staging:
+      +materialized: incremental
+      +incremental_strategy: merge
+    intermediate:
+      +materialized: incremental
+      +incremental_strategy: merge
+    marts:
+      core:
+        # Dimension tables are full refresh (table)
+        dim_zip_codes:
+          +materialized: table
+        dim_complaint_types:
+          +materialized: table
+        dim_permit_types:
+          +materialized: table
+        dim_date:
+          +materialized: table
+        # Fact table is incremental
+        fct_neighborhood_monthly:
+          +materialized: incremental
+          +incremental_strategy: merge
+      analytics:
+        +materialized: incremental
+        +incremental_strategy: merge

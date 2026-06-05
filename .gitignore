@@ -1,0 +1,9 @@
+.DS_Store
+.env
+logs/
+plugins/
+CLAUDE.md
+High-Level Architecture.md
+scripts/dbt/target/
+scripts/dbt/dbt_packages/
+scripts/dbt/logs/ 
