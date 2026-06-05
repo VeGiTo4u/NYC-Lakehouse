@@ -393,6 +393,7 @@ def register_table(full_table_name: str, s3_target_path: str) -> None:
 def post_write_validation_bronze(
     full_table_name: str,
     rows_written:    int,
+    job_run_id:      str = None,
 ) -> None:
     """
     Validates the registered Bronze table after write.
@@ -402,17 +403,15 @@ def post_write_validation_bronze(
          This is a hard failure because this function is only called
          when the caller confirmed rows_written > 0. If we still see
          zero here, something is wrong.
-      2. All 7 ETL metadata columns are present and non-NULL. This is
-         the real correctness check -- NULL metadata means context
-         resolution or the append_etl_metadata logic silently failed,
-         which must be caught before Silver runs.
-
-    The NULL check scans the table. For Bronze tables this is
-    intentional and retained because metadata correctness cannot
-    be inferred from the streaming query metrics alone.
+      2. All 7 ETL metadata columns are present and non-NULL in the
+         current batch (filtered by _job_run_id when provided).
+         NULL metadata means context resolution or append_etl_metadata
+         logic silently failed, which must be caught before Silver runs.
     """
     print("[START] Post-write validation")
     print(f"[INFO]  Rows written (streaming metrics): {rows_written:,}")
+    if job_run_id:
+        print(f"[INFO]  Validating batch for _job_run_id: {job_run_id}")
 
     try:
         if rows_written == 0:
@@ -422,6 +421,15 @@ def post_write_validation_bronze(
             )
 
         df_val = spark.table(full_table_name)
+        if job_run_id:
+            df_val = df_val.filter(F.col("_job_run_id") == job_run_id)
+            batch_count = df_val.count()
+            if batch_count == 0:
+                raise ValueError(
+                    f"FAILED: No rows found for _job_run_id '{job_run_id}' "
+                    "despite positive streaming metrics."
+                )
+            print(f"[INFO]  Batch row count in table: {batch_count:,}")
 
         # All 7 ETL metadata columns
         meta_cols = [

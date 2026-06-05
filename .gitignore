@@ -6,4 +6,6 @@ CLAUDE.md
 High-Level Architecture.md
 scripts/dbt/target/
 scripts/dbt/dbt_packages/
-scripts/dbt/logs/ 
+scripts/dbt/logs/
+NYC_Dataset_Analysis.md
+AGENTS.md

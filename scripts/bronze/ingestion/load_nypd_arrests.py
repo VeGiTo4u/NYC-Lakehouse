@@ -77,9 +77,10 @@ etl_meta = resolve_etl_metadata()
 
 # COMMAND ----------
 
-# -- Schema Setup -----------------------------------------
+# -- Schema Setup + Registration --------------------------
 
 setup_bronze_schema(catalog, schema)
+register_table(full_table_name, s3_target_path)
 
 # COMMAND ----------
 
@@ -118,17 +119,19 @@ rows_ytd = load_bronze_autoloader(
 # COMMAND ----------
 
 # -- Registration + Validation ----------------------------
-# Registration runs once -- CREATE TABLE IF NOT EXISTS is a no-op
-# after the first stream creates the Delta files.
-# Validation checks the combined table (both streams).
+# Table registered above before ingestion. Validation checks
+# the combined table for rows written in this job run.
 
 rows_total = max(rows_historic, 0) + max(rows_ytd, 0)
 
 if rows_total > 0:
-    register_table(full_table_name, s3_target_path)
-    post_write_validation_bronze(full_table_name, rows_total)
+    post_write_validation_bronze(
+        full_table_name,
+        rows_total,
+        job_run_id=etl_meta["job_run_id"],
+    )
 else:
-    print("[INFO] No new data from either stream -- skipping registration and validation")
+    print("[INFO] No new data from either stream -- skipping batch validation")
 
 # COMMAND ----------
 

@@ -1,0 +1,327 @@
+version: 2
+
+models:
+  # ═══════════════════════════════════════════════════════════════════
+  # stg_311_requests
+  # ═══════════════════════════════════════════════════════════════════
+  - name: stg_311_requests
+    description: >
+      Staged 311 service requests — deduplicated, type-cast, borough-standardised.
+      Grain: one row per complaint (complaint_id).
+      Materialized in: nyc-lakehouse.silver.stg_311_requests
+    columns:
+      - name: complaint_id
+        description: "Primary key — unique 311 complaint ID (cast from unique_key)"
+        data_tests:
+          - unique
+          - not_null
+
+      - name: created_date
+        description: "Timestamp when the complaint was created / filed"
+        data_tests:
+          - not_null
+
+      - name: closed_date
+        description: "Timestamp when the complaint was closed / resolved"
+
+      - name: resolution_action_updated_date
+        description: "Timestamp of the last resolution action update"
+
+      - name: responding_agency_code
+        description: "Short code of the NYC agency that handled the complaint (e.g. NYPD, DEP, DOT)"
+
+      - name: complaint_type
+        description: "Primary complaint category (e.g. Noise - Residential, Illegal Parking)"
+
+      - name: complaint_descriptor
+        description: "Sub-category providing additional detail on the complaint type"
+
+      - name: location_type
+        description: "Type of location where the incident occurred (Residential / Street / Commercial etc.)"
+
+      - name: complaint_status
+        description: "Current status of the complaint — Open / Closed / Pending / Started / Assigned"
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Open", "Closed", "Pending", "Started", "Assigned", "In Progress", "Draft", "Unspecified"]
+
+      - name: resolution_description
+        description: "Free-text description of how the complaint was resolved"
+
+      - name: submission_channel
+        description: "How the complaint was submitted — PHONE / ONLINE / MOBILE / UNKNOWN"
+
+      - name: zip_code
+        description: "5-digit incident zip code (renamed from incident_zip)"
+        data_tests:
+          - not_null
+
+      - name: borough_raw
+        description: "Original borough value before standardisation"
+
+      - name: borough
+        description: "Standardised borough name (MANHATTAN / BRONX / BROOKLYN / QUEENS / STATEN ISLAND)"
+        data_tests:
+          - not_null:
+              config:
+                where: "borough_raw IS NOT NULL AND TRIM(borough_raw) NOT IN ('', 'Unspecified')"
+
+      - name: borough_block_lot
+        description: "BBL (Borough-Block-Lot) identifier — fine-grain property reference"
+
+      - name: resolution_time_hours
+        description: "Hours between created_date and closed_date — measures complaint resolution speed"
+
+      - name: year_month
+        description: "Derived: DATE_FORMAT(created_date, 'yyyy-MM') — used as time grain in intermediate models"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # stg_nypd_arrests
+  # ═══════════════════════════════════════════════════════════════════
+  - name: stg_nypd_arrests
+    description: >
+      Staged NYPD arrest records — deduplicated, type-cast, borough-standardised,
+      with zip_code resolved via st_contains spatial join against ZCTA polygons.
+      Grain: one row per arrest (arrest_id).
+      Materialized in: nyc-lakehouse.silver.stg_nypd_arrests
+    columns:
+      - name: arrest_id
+        description: "Primary key — unique arrest identifier (cast from arrest_key)"
+        data_tests:
+          - unique
+          - not_null
+
+      - name: arrest_date
+        description: "Date when the arrest was made"
+        data_tests:
+          - not_null
+
+      - name: nypd_classification_code
+        description: "Internal NYPD PD code — fine-grained offense classification number"
+
+      - name: nypd_classification_desc
+        description: "Human-readable description of the NYPD PD classification (83 unique values)"
+
+      - name: offense_category_code
+        description: "Higher-level KY code — groups offenses into broader categories"
+
+      - name: offense_description
+        description: "Primary offense type description (39 unique values) — main analytical dimension for Q6/Q7/Q8"
+
+      - name: penal_law_code
+        description: "New York State Penal Law section code — specific law violated"
+
+      - name: law_category
+        description: "Severity level — F (Felony), M (Misdemeanor), V (Violation), 9, I"
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["F", "M", "V", "9", "I"]
+
+      - name: arrest_borough_raw
+        description: "Original single-letter NYPD borough code before standardisation"
+
+      - name: borough
+        description: "Standardised borough name (from NYPD single-letter codes M/B/K/Q/S)"
+        data_tests:
+          - not_null
+
+      - name: arrest_precinct
+        description: "NYPD precinct number where the arrest was made — retained for reference"
+
+      - name: zip_code
+        description: "Zip code resolved via st_contains spatial join against ZCTA polygons, or 'UNKNOWN' fallback"
+        data_tests:
+          - not_null
+
+      - name: zip_code_source
+        description: "How zip_code was resolved — 'spatial' (st_contains match) or 'borough_fallback'"
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["spatial", "borough_fallback"]
+
+      - name: perpetrator_age_group
+        description: "Age group of the arrested person — NULLed where source contained literal string '(null)'"
+
+      - name: perpetrator_sex
+        description: "Sex of the arrested person (M/F) — NULLed where source contained literal string '(null)'"
+
+      - name: perpetrator_race
+        description: "Race of the arrested person — 7 distinct values for demographic/equity analysis"
+
+      - name: year_month
+        description: "Derived: DATE_FORMAT(arrest_date, 'yyyy-MM') — used as time grain in intermediate models"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # stg_dob_permits
+  # ═══════════════════════════════════════════════════════════════════
+  - name: stg_dob_permits
+    description: >
+      Staged DOB permit issuance records — deduplicated, type-cast, borough-standardised.
+      Grain: one row per job + permit sequence (job_number + permit_sequence_number).
+      Materialized in: nyc-lakehouse.silver.stg_dob_permits
+    columns:
+      - name: permit_key
+        description: "Surrogate key: dbt_utils.generate_surrogate_key(['job__', 'permit_sequence__'])"
+        data_tests:
+          - unique
+          - not_null
+
+      - name: job_number
+        description: "DOB job number — part of composite primary key (source: job__)"
+        data_tests:
+          - not_null
+
+      - name: permit_sequence_number
+        description: "Permit sequence within a job — part of composite primary key (source: permit_sequence__)"
+        data_tests:
+          - not_null
+
+      - name: building_id_number
+        description: "BIN (Building Identification Number) — unique building-level identifier"
+
+      - name: job_document_number
+        description: "Document iteration number per job (1-6 values) — tracks permit amendments"
+
+      - name: job_type
+        description: "Type of construction job — NB (New Building), A1/A2/A3 (Alterations), DM (Demolition)"
+
+      - name: is_self_certified
+        description: "Whether the permit was self-certified by the applicant (Y/N)"
+
+      - name: borough_raw
+        description: "Original DOB numeric borough code (1-5) before standardisation"
+
+      - name: borough
+        description: "Standardised borough name (from DOB numeric codes 1=Manhattan through 5=Staten Island)"
+        data_tests:
+          - not_null
+
+      - name: issuance_date
+        description: "Date the permit was issued — watermark column for incremental loading"
+        data_tests:
+          - not_null
+
+      - name: zip_code
+        description: "Permit location zip code"
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+
+      - name: building_type
+        description: "Building classification — 1 (1-2 family dwelling) or 2 (multiple dwelling)"
+
+      - name: neighborhood_name
+        description: "GIS-derived Neighborhood Tabulation Area name — directly populates dim_zip_codes"
+
+      - name: is_non_profit
+        description: "Whether the property owner is a non-profit (Y/N) — 93% N, 7% Y in actual data"
+
+      - name: is_active_permit
+        description: "1 if expiration_date >= current_date(), 0 otherwise — measures current construction activity"
+
+      - name: year_month
+        description: "Derived: DATE_FORMAT(issuance_date, 'yyyy-MM') — used as time grain in intermediate models"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # stg_restaurant_inspections
+  # ═══════════════════════════════════════════════════════════════════
+  - name: stg_restaurant_inspections
+    description: >
+      Staged restaurant inspection records — deduplicated on 4-part composite key,
+      type-cast, borough-standardised. One row per violation per inspection.
+      Grain: restaurant_id + inspection_date + violation_code + inspection_type.
+      Materialized in: nyc-lakehouse.silver.stg_restaurant_inspections
+    columns:
+      - name: inspection_record_key
+        description: >
+          Surrogate key: dbt_utils.generate_surrogate_key(
+            ['camis', 'inspection_date', 'violation_code', 'inspection_type']
+          )
+        data_tests:
+          - unique
+          - not_null
+
+      - name: restaurant_id
+        description: "CAMIS — unique restaurant identifier used as SCD2 snapshot key"
+        data_tests:
+          - not_null
+
+      - name: restaurant_name
+        description: "Doing Business As (DBA) name of the restaurant"
+
+      - name: cuisine_type
+        description: "Type of cuisine served — primary dimension for Q13 (cuisine vs inspection score)"
+
+      - name: inspection_date
+        description: "Date of the health inspection — part of composite dedup key"
+        data_tests:
+          - not_null
+
+      - name: violation_code
+        description: "DOHMH violation code — specific health code violation"
+
+      - name: inspection_type
+        description: "Type of inspection — Cycle Inspection, Re-inspection, Pre-permit, etc."
+
+      - name: zip_code
+        description: "Restaurant zip code (renamed from zipcode)"
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+
+      - name: borough_raw
+        description: "Original mixed-case borough value (e.g. 'Manhattan') before standardisation"
+
+      - name: borough
+        description: "Standardised borough name (from mixed-case Restaurant data)"
+        data_tests:
+          - not_null:
+              config:
+                where: "borough IS NOT NULL OR borough_raw != '0'"
+
+      - name: building_id_number
+        description: "BIN (Building Identification Number) — aligns with DOB building_id_number"
+
+      - name: borough_block_lot
+        description: "BBL (Borough-Block-Lot) — fine-grain property identifier"
+
+      - name: neighborhood_tabulation_area
+        description: "NTA code — links to DOB neighborhood_name"
+
+      - name: enforcement_action
+        description: "Action taken by DOHMH — e.g. violations were cited, establishment closed"
+
+      - name: is_critical_violation
+        description: "Whether the violation is critical — Critical / Not Critical / Not Applicable"
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Critical", "Not Critical", "Not Applicable"]
+
+      - name: inspection_score
+        description: "Numeric inspection score (lower = better). NYC grading: A=0-13, B=14-27, C=28+"
+
+      - name: inspection_grade
+        description: >
+          Letter grade (A/B/C/Z/P/N). 49.7% NULL is expected by design —
+          initial inspections don't always receive a grade.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["A", "B", "C", "Z", "P", "N"]
+              config:
+                where: "inspection_grade IS NOT NULL"
+
+      - name: grade_assigned_date
+        description: "Date the letter grade was assigned — NULL when no grade was given"
+
+      - name: grade_numeric
+        description: "Numeric representation of grade — A=1, B=2, C=3, NULL otherwise"
+
+      - name: year_month
+        description: "Derived: DATE_FORMAT(inspection_date, 'yyyy-MM') — used as time grain in intermediate models"

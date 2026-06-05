@@ -6,6 +6,7 @@ x-airflow-common:
     - ../.env
   environment:
     &airflow-common-env
+    SOCRATA_APP_TOKEN: ${SOCRATA_APP_TOKEN:-}
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
