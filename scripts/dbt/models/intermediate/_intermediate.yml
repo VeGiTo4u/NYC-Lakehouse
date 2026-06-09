@@ -1,0 +1,204 @@
+version: 2
+
+models:
+  # ═══════════════════════════════════════════════════════════════════
+  # int_311_by_zip_month
+  # ═══════════════════════════════════════════════════════════════════
+  - name: int_311_by_zip_month
+    description: >
+      311 service requests aggregated to zip_code + year_month grain.
+      Counts complaint volumes by type (noise, food, construction) and
+      tracks resolution metrics. Uses 90-day lookback on incremental runs.
+      Grain: one row per zip_code per year_month.
+    columns:
+      - name: zip_code
+        description: "5-digit NYC zip code — grain key 1"
+        data_tests:
+          - not_null
+
+      - name: year_month
+        description: "Year-month string (yyyy-MM format) — grain key 2"
+        data_tests:
+          - not_null
+
+      - name: total_complaints
+        description: "Total number of 311 complaints filed in this zip+month"
+        data_tests:
+          - not_null
+
+      - name: noise_complaints
+        description: "Count of complaints where complaint_type contains 'Noise'"
+
+      - name: food_complaints
+        description: "Count of complaints where complaint_type contains 'Food'"
+
+      - name: construction_complaints
+        description: "Count of complaints where complaint_type contains 'Construction' or 'Building'"
+
+      - name: avg_resolution_hours
+        description: "Average hours between complaint creation and closure — NULL if no closed complaints in window"
+
+      - name: open_complaints
+        description: "Count of complaints with status = 'Open' as of the staging snapshot"
+
+      - name: closed_complaints
+        description: "Count of complaints with status = 'Closed'"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # int_arrests_by_zip_month
+  # ═══════════════════════════════════════════════════════════════════
+  - name: int_arrests_by_zip_month
+    description: >
+      NYPD arrest records aggregated to zip_code + year_month grain.
+      Counts arrests by severity level (felony, misdemeanor, violation).
+      Uses 200-day lookback to cover NYPD's quarterly release window.
+      Excludes zip_code = 'UNKNOWN' (arrests with NULL coordinates).
+      Grain: one row per zip_code per year_month.
+    columns:
+      - name: zip_code
+        description: "Spatially-resolved zip code from st_contains join — grain key 1"
+        data_tests:
+          - not_null
+
+      - name: year_month
+        description: "Year-month string (yyyy-MM format) — grain key 2"
+        data_tests:
+          - not_null
+
+      - name: total_arrests
+        description: "Total number of arrests in this zip+month"
+        data_tests:
+          - not_null
+
+      - name: felony_count
+        description: "Count of felony arrests (law_category = 'F')"
+
+      - name: misdemeanor_count
+        description: "Count of misdemeanor arrests (law_category = 'M')"
+
+      - name: violation_count
+        description: "Count of violation-level arrests (law_category = 'V')"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # int_permits_by_zip_month
+  # ═══════════════════════════════════════════════════════════════════
+  - name: int_permits_by_zip_month
+    description: >
+      DOB permit issuance records aggregated to zip_code + year_month grain.
+      Counts permits by type (new building, alteration, demolition) and
+      tracks currently active permits. Uses 90-day lookback.
+      Grain: one row per zip_code per year_month.
+    columns:
+      - name: zip_code
+        description: "Permit location zip code — grain key 1"
+        data_tests:
+          - not_null
+
+      - name: year_month
+        description: "Year-month of issuance (yyyy-MM format) — grain key 2"
+        data_tests:
+          - not_null
+
+      - name: total_permits_issued
+        description: "Total number of permits issued in this zip+month"
+        data_tests:
+          - not_null
+
+      - name: active_permits
+        description: "Count of permits with expiration_date >= current_date (as of staging run)"
+
+      - name: new_building_count
+        description: "Count of permits with job_type = 'NB' (New Building)"
+
+      - name: alteration_count
+        description: "Count of permits with job_type IN ('A1', 'A2', 'A3')"
+
+      - name: demolition_count
+        description: "Count of permits with job_type = 'DM' (Demolition)"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # int_inspections_by_zip_month
+  # ═══════════════════════════════════════════════════════════════════
+  - name: int_inspections_by_zip_month
+    description: >
+      Restaurant inspection records aggregated to zip_code + year_month grain.
+      Uses dedup-aware aggregation: visit-level metrics (total_inspections,
+      avg_score, grade percentages) are computed on deduplicated inspection
+      visits (restaurant_id + inspection_date), while critical_violation_count
+      is computed at the violation-row level. Uses 90-day lookback.
+      Grain: one row per zip_code per year_month.
+    columns:
+      - name: zip_code
+        description: "Restaurant location zip code — grain key 1"
+        data_tests:
+          - not_null
+
+      - name: year_month
+        description: "Year-month of inspection (yyyy-MM format) — grain key 2"
+        data_tests:
+          - not_null
+
+      - name: total_inspections
+        description: "Count of distinct inspection visits (deduplicated by restaurant_id + inspection_date)"
+        data_tests:
+          - not_null
+
+      - name: unique_restaurants_inspected
+        description: "Count of distinct restaurants inspected in this zip+month"
+
+      - name: avg_score
+        description: "Average inspection score across visits (lower = better). NULL if no scores recorded."
+
+      - name: pct_grade_a
+        description: "Fraction of graded inspections with grade A (0.0 to 1.0). NULL if no graded inspections."
+
+      - name: pct_grade_b
+        description: "Fraction of graded inspections with grade B (0.0 to 1.0). NULL if no graded inspections."
+
+      - name: pct_grade_c
+        description: "Fraction of graded inspections with grade C (0.0 to 1.0). NULL if no graded inspections."
+
+      - name: critical_violation_count
+        description: "Count of critical violations (at violation-row level, not deduplicated to visit level)"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # int_complaint_permit_corr
+  # ═══════════════════════════════════════════════════════════════════
+  - name: int_complaint_permit_corr
+    description: >
+      Cross-domain correlation model joining 311 complaints with DOB permits
+      at zip_code + year_month grain. Uses FULL OUTER JOIN to preserve zip codes
+      appearing in only one dataset. Enables Q16 analysis: does construction
+      activity predict noise complaint spikes? Uses 90-day lookback.
+      Grain: one row per zip_code per year_month.
+    columns:
+      - name: zip_code
+        description: "COALESCE of complaint and permit zip codes — grain key 1"
+        data_tests:
+          - not_null
+
+      - name: year_month
+        description: "COALESCE of complaint and permit year_month — grain key 2"
+        data_tests:
+          - not_null
+
+      - name: total_complaints
+        description: "Total 311 complaints — NULL when zip has no complaints that month"
+
+      - name: noise_complaints
+        description: "Noise-related 311 complaints — NULL when zip has no complaints"
+
+      - name: construction_complaints
+        description: "Construction/building 311 complaints — NULL when zip has no complaints"
+
+      - name: avg_resolution_hours
+        description: "Average complaint resolution time — NULL when no complaints or no closures"
+
+      - name: total_permits_issued
+        description: "Total DOB permits issued — NULL when zip has no permits that month"
+
+      - name: active_permits
+        description: "Active DOB permits — NULL when zip has no permits"
+
+      - name: new_building_count
+        description: "New Building permits — NULL when zip has no permits"

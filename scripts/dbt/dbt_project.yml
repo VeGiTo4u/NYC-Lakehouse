@@ -30,9 +30,9 @@ models:
       +incremental_strategy: merge
       base:
         +materialized: ephemeral
-    # intermediate:
-    #   +materialized: incremental
-    #   +incremental_strategy: merge
+    intermediate:
+      +materialized: incremental
+      +incremental_strategy: merge
     # marts:
     #   core:
     #     # Dimension tables are full refresh (table)
