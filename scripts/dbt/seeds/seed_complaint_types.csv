@@ -1,0 +1,47 @@
+complaint_type,category,subcategory,responsible_agency
+HEAT/HOT WATER,Housing,Entire Building,HPD
+Noise - Residential,Noise,Loud Music/Party,DEP
+Noise - Street/Sidewalk,Noise,Loud Talking,DEP
+Noise - Commercial,Noise,Loud Music/Party,DEP
+Noise - Vehicle,Noise,Car/Truck Music,DEP
+Noise - Park,Noise,Loud Music/Party,NYPD
+Noise - Helicopter,Noise,Helicopter Noise,DEP
+Noise,Noise,General Noise,DEP
+Blocked Driveway,Streets,No Access,NYPD
+Illegal Parking,Streets,Posted Parking Sign Violation,NYPD
+Street Condition,Streets,Pothole,DOT
+Street Light Condition,Streets,Street Light Out,DOT
+Sidewalk Condition,Streets,Broken Sidewalk,DOT
+Traffic Signal Condition,Streets,Controller,DOT
+Water System,Infrastructure,Catch Basin Clogged,DEP
+Sewer,Infrastructure,Sewer Backup,DEP
+Water Leak,Infrastructure,At Hydrant,DEP
+Plumbing,Infrastructure,Water Supply,HPD
+PAINT/PLASTER,Housing,Peeling Paint,HPD
+DOOR/WINDOW,Housing,Window Broken,HPD
+FLOORING/STAIRS,Housing,Floor Broken,HPD
+ELECTRIC,Housing,No Electricity,HPD
+APPLIANCE,Housing,Stove Not Working,HPD
+GENERAL CONSTRUCTION,Construction,General Construction,DOB
+Building/Use,Construction,Illegal Conversion,DOB
+Construction,Construction,General Construction,DOB
+Non-Residential Noise,Noise,Non-Residential Noise,DEP
+Food Establishment,Food,Food Establishment Complaint,DOHMH
+Food Poisoning,Food,Food Poisoning,DOHMH
+Rodent,Sanitation,Rat Sighting,DOHMH
+UNSANITARY CONDITION,Sanitation,Unsanitary Condition,HPD
+Dirty Conditions,Sanitation,Dirty Sidewalk,DSNY
+Missed Collection,Sanitation,Missed Collection,DSNY
+Sanitation Condition,Sanitation,Litter Basket Overflowing,DSNY
+Derelict Vehicle,Streets,Derelict Vehicle,NYPD
+Homeless Person Assistance,Other,Homeless Person Assistance,DHS
+Drug Activity,Other,Drug Activity,NYPD
+Graffiti,Other,Graffiti Complaint,NYPD
+Animal Abuse,Other,Animal Abuse,NYPD
+Elevator,Other,Elevator Not Working,DOB
+Fire Safety Director - Loss of Certificate,Other,Loss of Certificate,FDNY
+Taxi Complaint,Other,Taxi Complaint,TLC
+Ferry Complaint,Other,Ferry Complaint,DOT
+Air Quality,Other,Air Quality,DEP
+Asbestos,Other,Asbestos Complaint,DEP
+Lead,Other,Lead Paint Complaint,HPD

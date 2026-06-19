@@ -9,3 +9,12 @@ scripts/dbt/dbt_packages/
 scripts/dbt/logs/
 NYC_Dataset_Analysis.md
 AGENTS.md
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Dashboard data (ignore all except .gitkeep)
+dashboard/data/*
+!dashboard/data/.gitkeep

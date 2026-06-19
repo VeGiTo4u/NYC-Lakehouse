@@ -1,0 +1,93 @@
+version: 2
+
+seeds:
+  # ═══════════════════════════════════════════════════════════════════
+  # seed_zip_codes
+  # ═══════════════════════════════════════════════════════════════════
+  - name: seed_zip_codes
+    description: >
+      Reference data for NYC zip codes with borough, neighborhood name,
+      and NTA code. Generated from Silver staging models using
+      seeds/scripts/generate_seeds.sql. One row per zip_code.
+    config:
+      column_types:
+        zip_code: STRING
+        borough: STRING
+        neighborhood_name: STRING
+        nta_code: STRING
+    columns:
+      - name: zip_code
+        description: "5-digit NYC zip code"
+        data_tests:
+          - not_null
+          - unique
+
+      - name: borough
+        description: "Standardized borough name (MANHATTAN, BROOKLYN, BRONX, QUEENS, STATEN ISLAND)"
+
+      - name: neighborhood_name
+        description: "Neighborhood name from DOB GIS NTA data"
+
+      - name: nta_code
+        description: "Neighborhood Tabulation Area code from DOB GIS data"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # seed_complaint_types
+  # ═══════════════════════════════════════════════════════════════════
+  - name: seed_complaint_types
+    description: >
+      Reference data for 311 complaint types with grouped categories,
+      subcategories, and responsible agencies. Generated from
+      stg_311_requests using seeds/scripts/generate_seeds.sql.
+      One row per complaint_type.
+    config:
+      column_types:
+        complaint_type: STRING
+        category: STRING
+        subcategory: STRING
+        responsible_agency: STRING
+    columns:
+      - name: complaint_type
+        description: "Original 311 complaint type string"
+        data_tests:
+          - not_null
+          - unique
+
+      - name: category
+        description: "Grouped category (Noise, Food, Construction, Housing, Infrastructure, Streets, Sanitation, Other)"
+
+      - name: subcategory
+        description: "Complaint descriptor / sub-classification"
+
+      - name: responsible_agency
+        description: "Agency code handling this complaint type (HPD, DEP, DOB, NYPD, etc.)"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # seed_permit_types
+  # ═══════════════════════════════════════════════════════════════════
+  - name: seed_permit_types
+    description: >
+      Reference data for DOB permit types with descriptions, job type
+      codes, and derived work categories. Generated from stg_dob_permits
+      using seeds/scripts/generate_seeds.sql. One row per permit_type.
+    config:
+      column_types:
+        permit_type: STRING
+        permit_type_desc: STRING
+        job_type: STRING
+        work_category: STRING
+    columns:
+      - name: permit_type
+        description: "DOB permit type code"
+        data_tests:
+          - not_null
+          - unique
+
+      - name: permit_type_desc
+        description: "Permit type description / subtype"
+
+      - name: job_type
+        description: "Job type code (NB, A1, A2, A3, DM, SG, FO)"
+
+      - name: work_category
+        description: "Derived work category (New Building, Alteration, Demolition, Sign, Foundation, Other)"

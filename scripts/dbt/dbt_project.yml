@@ -33,21 +33,25 @@ models:
     intermediate:
       +materialized: incremental
       +incremental_strategy: merge
-    # marts:
-    #   core:
-    #     # Dimension tables are full refresh (table)
-    #     dim_zip_codes:
-    #       +materialized: table
-    #     dim_complaint_types:
-    #       +materialized: table
-    #     dim_permit_types:
-    #       +materialized: table
-    #     dim_date:
-    #       +materialized: table
-    #     # Fact table is incremental
-    #     fct_neighborhood_monthly:
-    #       +materialized: incremental
-    #       +incremental_strategy: merge
-    #   analytics:
-    #     +materialized: incremental
-    #     +incremental_strategy: merge
+    marts:
+      core:
+        # Dimension tables are full refresh (table)
+        dim_zip_codes:
+          +materialized: table
+        dim_complaint_types:
+          +materialized: table
+        dim_permit_types:
+          +materialized: table
+        dim_date:
+          +materialized: table
+        # Fact table is incremental
+        fact_neighborhood_monthly:
+          +materialized: incremental
+          +incremental_strategy: merge
+      analytics:
+        +materialized: incremental
+        +incremental_strategy: merge
+
+seeds:
+  nyc_lakehouse_dbt:
+    +schema: gold

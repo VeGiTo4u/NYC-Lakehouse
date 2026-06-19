@@ -1,0 +1,295 @@
+version: 2
+
+models:
+  # ═══════════════════════════════════════════════════════════════════
+  # mart_neighborhood_pulse
+  # ═══════════════════════════════════════════════════════════════════
+  - name: mart_neighborhood_pulse
+    description: >
+      Denormalized, Streamlit-ready wide table joining the fact table
+      with all dimension tables. Zero-join convenience for the dashboard.
+      Primary data source for the Neighborhood Explorer page.
+      Grain: zip_code + year_month.
+    columns:
+      - name: zip_code
+        description: "5-digit NYC zip code — grain key 1"
+        data_tests:
+          - not_null
+
+      - name: year_month
+        description: "Year-month string (yyyy-MM format) — grain key 2"
+        data_tests:
+          - not_null
+
+      - name: borough
+        description: "Standardized borough name from dim_zip_codes"
+
+      - name: neighborhood_name
+        description: "Neighborhood name from dim_zip_codes"
+
+      - name: nta_code
+        description: "Neighborhood Tabulation Area code"
+
+      - name: year
+        description: "Calendar year from dim_date"
+
+      - name: month
+        description: "Calendar month (1-12) from dim_date"
+
+      - name: quarter
+        description: "Calendar quarter (1-4) from dim_date"
+
+      - name: month_name
+        description: "Full month name from dim_date"
+
+      - name: is_current_month
+        description: "TRUE if current calendar month"
+
+      - name: is_complete_month
+        description: "TRUE for finalized months, FALSE for current in-progress month"
+
+      - name: total_complaints
+        description: "Total 311 complaints"
+
+      - name: noise_complaint_count
+        description: "Noise-related 311 complaints"
+
+      - name: food_complaint_count
+        description: "Food-related 311 complaints"
+
+      - name: construction_complaint_count
+        description: "Construction/building-related 311 complaints"
+
+      - name: avg_resolution_hours
+        description: "Average complaint resolution time in hours"
+
+      - name: open_complaint_count
+        description: "Open complaints count"
+
+      - name: closed_complaint_count
+        description: "Closed complaints count"
+
+      - name: total_arrests
+        description: "Total NYPD arrests"
+
+      - name: felony_count
+        description: "Felony arrests"
+
+      - name: misdemeanor_count
+        description: "Misdemeanor arrests"
+
+      - name: violation_count
+        description: "Violation-level arrests"
+
+      - name: total_permits_issued
+        description: "Total DOB permits issued"
+
+      - name: active_permit_count
+        description: "Active (not expired) permits"
+
+      - name: new_building_count
+        description: "New Building permits"
+
+      - name: alteration_count
+        description: "Alteration permits"
+
+      - name: demolition_count
+        description: "Demolition permits"
+
+      - name: total_inspections
+        description: "Restaurant inspection visits"
+
+      - name: unique_restaurants_inspected
+        description: "Distinct restaurants inspected"
+
+      - name: avg_inspection_score
+        description: "Average inspection score (lower = better)"
+
+      - name: pct_grade_a
+        description: "Fraction of grade A inspections"
+
+      - name: pct_grade_b
+        description: "Fraction of grade B inspections"
+
+      - name: pct_grade_c
+        description: "Fraction of grade C inspections"
+
+      - name: critical_violation_count
+        description: "Critical violation count"
+
+      - name: neighborhood_pulse_score
+        description: "Composite KPI (0-100, higher = healthier)"
+
+      - name: _gold_loaded_at
+        description: "Audit: timestamp when Gold layer processed this row"
+
+      - name: _gold_model_name
+        description: "Audit: dbt model name"
+
+      - name: _gold_run_id
+        description: "Audit: dbt invocation ID"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # mart_safety_infrastructure_corr
+  # ═══════════════════════════════════════════════════════════════════
+  - name: mart_safety_infrastructure_corr
+    description: >
+      Arrests × permits correlation mart — combines NYPD arrest data with
+      DOB permit data for correlation and trend analysis. Uses FULL OUTER
+      JOIN to preserve zip codes in only one dataset.
+      Grain: zip_code + year_month.
+    columns:
+      - name: zip_code
+        description: "COALESCE of arrest and permit zip codes — grain key 1"
+        data_tests:
+          - not_null
+
+      - name: year_month
+        description: "COALESCE of arrest and permit year_month — grain key 2"
+        data_tests:
+          - not_null
+
+      - name: total_arrests
+        description: "Total NYPD arrests (0 if no arrest data)"
+
+      - name: felony_count
+        description: "Felony arrests"
+
+      - name: misdemeanor_count
+        description: "Misdemeanor arrests"
+
+      - name: violation_count
+        description: "Violation-level arrests"
+
+      - name: total_permits_issued
+        description: "Total DOB permits issued (0 if no permit data)"
+
+      - name: active_permit_count
+        description: "Active (not expired) permits"
+
+      - name: new_building_count
+        description: "New Building permits"
+
+      - name: alteration_count
+        description: "Alteration permits"
+
+      - name: demolition_count
+        description: "Demolition permits"
+
+      - name: arrests_per_permit
+        description: "Derived ratio: total_arrests / total_permits_issued — NULL when no permits"
+
+      - name: felony_pct
+        description: "Felony percentage of total arrests (0.0 to 1.0) — NULL when no arrests"
+
+      - name: _gold_loaded_at
+        description: "Audit: timestamp when Gold layer processed this row"
+
+      - name: _gold_model_name
+        description: "Audit: dbt model name"
+
+      - name: _gold_run_id
+        description: "Audit: dbt invocation ID"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # mart_top_complaints_by_borough
+  # ═══════════════════════════════════════════════════════════════════
+  - name: mart_top_complaints_by_borough
+    description: >
+      Complaint type rankings per borough per month. Sources directly
+      from stg_311_requests to preserve complaint_type detail. Includes
+      DENSE_RANK within borough+month and percentage of borough total.
+      Grain: borough + year_month + complaint_type.
+    columns:
+      - name: borough
+        description: "Standardized borough name — grain key 1"
+        data_tests:
+          - not_null
+
+      - name: year_month
+        description: "Year-month string (yyyy-MM format) — grain key 2"
+        data_tests:
+          - not_null
+
+      - name: complaint_type
+        description: "311 complaint type — grain key 3"
+        data_tests:
+          - not_null
+
+      - name: complaint_count
+        description: "Number of complaints for this type in this borough+month"
+        data_tests:
+          - not_null
+
+      - name: borough_rank
+        description: "DENSE_RANK within borough+month ordered by complaint_count DESC"
+        data_tests:
+          - not_null
+
+      - name: pct_of_borough_total
+        description: "Fraction of total complaints for this borough+month (0.0 to 1.0)"
+
+      - name: _gold_loaded_at
+        description: "Audit: timestamp when Gold layer processed this row"
+
+      - name: _gold_model_name
+        description: "Audit: dbt model name"
+
+      - name: _gold_run_id
+        description: "Audit: dbt invocation ID"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # mart_food_compliance
+  # ═══════════════════════════════════════════════════════════════════
+  - name: mart_food_compliance
+    description: >
+      Food safety compliance mart — restaurant inspection metrics joined
+      with 311 food complaints side by side. FULL OUTER JOIN at zip+month
+      grain. Includes derived food_complaints_per_inspection ratio.
+      Grain: zip_code + year_month.
+    columns:
+      - name: zip_code
+        description: "COALESCE of inspection and complaint zip codes — grain key 1"
+        data_tests:
+          - not_null
+
+      - name: year_month
+        description: "COALESCE of inspection and complaint year_month — grain key 2"
+        data_tests:
+          - not_null
+
+      - name: total_inspections
+        description: "Restaurant inspection visits (0 if no inspections)"
+
+      - name: unique_restaurants_inspected
+        description: "Distinct restaurants inspected"
+
+      - name: avg_inspection_score
+        description: "Average inspection score (lower = better)"
+
+      - name: pct_grade_a
+        description: "Fraction of grade A inspections"
+
+      - name: pct_grade_b
+        description: "Fraction of grade B inspections"
+
+      - name: pct_grade_c
+        description: "Fraction of grade C inspections"
+
+      - name: critical_violation_count
+        description: "Critical violation count"
+
+      - name: food_complaint_count
+        description: "311 food-related complaints (0 if no complaints)"
+
+      - name: food_complaints_per_inspection
+        description: "Derived ratio: food_complaints / total_inspections — NULL when no inspections"
+
+      - name: _gold_loaded_at
+        description: "Audit: timestamp when Gold layer processed this row"
+
+      - name: _gold_model_name
+        description: "Audit: dbt model name"
+
+      - name: _gold_run_id
+        description: "Audit: dbt invocation ID"

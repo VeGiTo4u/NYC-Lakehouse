@@ -1,0 +1,14 @@
+permit_type,permit_type_desc,job_type,work_category
+EW,Equipment Work,NB,New Building
+EQ,Equipment,NB,New Building
+NB,New Building,NB,New Building
+AL,Alteration,A1,Alteration
+A1,Alteration Type 1,A1,Alteration
+A2,Alteration Type 2,A2,Alteration
+A3,Alteration Type 3,A3,Alteration
+DM,Demolition,DM,Demolition
+SG,Sign,SG,Sign
+FO,Foundation,FO,Foundation
+PL,Plumbing,A2,Alteration
+EL,Electrical,A2,Alteration
+OT,Other,A2,Alteration

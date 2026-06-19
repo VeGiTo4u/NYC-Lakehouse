@@ -1,0 +1,294 @@
+version: 2
+
+models:
+  # ═══════════════════════════════════════════════════════════════════
+  # dim_zip_codes
+  # ═══════════════════════════════════════════════════════════════════
+  - name: dim_zip_codes
+    description: >
+      Zip code dimension — one row per NYC zip code with borough,
+      neighborhood name, and NTA code. Full refresh daily.
+      Source: seed_zip_codes.
+    columns:
+      - name: zip_code
+        description: "5-digit NYC zip code — primary key"
+        data_tests:
+          - not_null
+          - unique
+
+      - name: borough
+        description: "Standardized borough name (MANHATTAN, BROOKLYN, BRONX, QUEENS, STATEN ISLAND)"
+        data_tests:
+          - not_null
+
+      - name: neighborhood_name
+        description: "Neighborhood name from DOB GIS NTA data — may be NULL for zip codes without DOB permits"
+
+      - name: nta_code
+        description: "Neighborhood Tabulation Area code from DOB GIS data"
+
+      - name: _gold_loaded_at
+        description: "Audit: timestamp when Gold layer processed this row"
+
+      - name: _gold_model_name
+        description: "Audit: dbt model name that produced this row"
+
+      - name: _gold_run_id
+        description: "Audit: dbt invocation ID for run-level traceability"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # dim_complaint_types
+  # ═══════════════════════════════════════════════════════════════════
+  - name: dim_complaint_types
+    description: >
+      Complaint type dimension — one row per distinct 311 complaint type
+      with grouped category, subcategory, and responsible agency.
+      Full refresh daily. Source: seed_complaint_types.
+    columns:
+      - name: complaint_type_key
+        description: "Surrogate key (MD5 hash of complaint_type) — primary key"
+        data_tests:
+          - not_null
+          - unique
+
+      - name: complaint_type
+        description: "Original 311 complaint type string"
+        data_tests:
+          - not_null
+          - unique
+
+      - name: category
+        description: "Grouped category (Noise, Food, Construction, Housing, Infrastructure, Streets, Sanitation, Other)"
+
+      - name: subcategory
+        description: "Complaint descriptor / sub-classification"
+
+      - name: responsible_agency
+        description: "Agency code handling this complaint type (HPD, DEP, DOB, NYPD, etc.)"
+
+      - name: _gold_loaded_at
+        description: "Audit: timestamp when Gold layer processed this row"
+
+      - name: _gold_model_name
+        description: "Audit: dbt model name that produced this row"
+
+      - name: _gold_run_id
+        description: "Audit: dbt invocation ID for run-level traceability"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # dim_permit_types
+  # ═══════════════════════════════════════════════════════════════════
+  - name: dim_permit_types
+    description: >
+      Permit type dimension — one row per distinct DOB permit type
+      with description, job type code, and derived work category.
+      Full refresh daily. Source: seed_permit_types.
+    columns:
+      - name: permit_type_key
+        description: "Surrogate key (MD5 hash of permit_type) — primary key"
+        data_tests:
+          - not_null
+          - unique
+
+      - name: permit_type
+        description: "DOB permit type code"
+        data_tests:
+          - not_null
+          - unique
+
+      - name: permit_type_desc
+        description: "Permit subtype description"
+
+      - name: job_type
+        description: "Job type code (NB, A1, A2, A3, DM, SG, FO)"
+
+      - name: work_category
+        description: "Derived work category (New Building, Alteration, Demolition, Sign, Foundation, Other)"
+
+      - name: _gold_loaded_at
+        description: "Audit: timestamp when Gold layer processed this row"
+
+      - name: _gold_model_name
+        description: "Audit: dbt model name that produced this row"
+
+      - name: _gold_run_id
+        description: "Audit: dbt invocation ID for run-level traceability"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # dim_date
+  # ═══════════════════════════════════════════════════════════════════
+  - name: dim_date
+    description: >
+      Date dimension — month-grain spine from 2006-01 to current month.
+      One row per year_month. Full refresh daily because is_current_month
+      and is_complete_month flags depend on CURRENT_DATE().
+    columns:
+      - name: year_month
+        description: "Year-month string (yyyy-MM format) — primary key"
+        data_tests:
+          - not_null
+          - unique
+
+      - name: year
+        description: "Calendar year"
+        data_tests:
+          - not_null
+
+      - name: month
+        description: "Calendar month (1-12)"
+        data_tests:
+          - not_null
+
+      - name: quarter
+        description: "Calendar quarter (1-4)"
+        data_tests:
+          - not_null
+
+      - name: month_name
+        description: "Full month name (January, February, ...)"
+        data_tests:
+          - not_null
+
+      - name: is_current_month
+        description: "TRUE if this is the current calendar month, FALSE otherwise"
+        data_tests:
+          - not_null
+
+      - name: is_complete_month
+        description: "TRUE for all months before the current month, FALSE for the current in-progress month"
+        data_tests:
+          - not_null
+
+      - name: _gold_loaded_at
+        description: "Audit: timestamp when Gold layer processed this row"
+
+      - name: _gold_model_name
+        description: "Audit: dbt model name that produced this row"
+
+      - name: _gold_run_id
+        description: "Audit: dbt invocation ID for run-level traceability"
+
+  # ═══════════════════════════════════════════════════════════════════
+  # fact_neighborhood_monthly
+  # ═══════════════════════════════════════════════════════════════════
+  - name: fact_neighborhood_monthly
+    description: >
+      Central fact table — one row per zip_code per year_month across all
+      four data domains (311 complaints, NYPD arrests, DOB permits,
+      restaurant inspections). Includes the neighborhood_pulse_score
+      composite KPI (0-100, higher = healthier). Uses zip_month_spine
+      for complete coverage. Incremental MERGE with 90-day lookback.
+    columns:
+      - name: zip_code
+        description: "5-digit NYC zip code — grain key 1, FK to dim_zip_codes"
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zip_codes')
+                field: zip_code
+
+      - name: year_month
+        description: "Year-month string (yyyy-MM format) — grain key 2, FK to dim_date"
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: year_month
+
+      - name: borough
+        description: "Standardized borough name — FK to dim_zip_codes.borough"
+        data_tests:
+          - not_null
+
+      - name: total_complaints
+        description: "Total 311 complaints in this zip+month (0 if no complaints)"
+        data_tests:
+          - not_null
+
+      - name: noise_complaint_count
+        description: "Noise-related 311 complaints"
+
+      - name: food_complaint_count
+        description: "Food-related 311 complaints"
+
+      - name: construction_complaint_count
+        description: "Construction/building-related 311 complaints"
+
+      - name: avg_resolution_hours
+        description: "Average hours between complaint creation and closure — NULL if no closed complaints"
+
+      - name: open_complaint_count
+        description: "Count of complaints with status = Open"
+
+      - name: closed_complaint_count
+        description: "Count of complaints with status = Closed"
+
+      - name: total_arrests
+        description: "Total NYPD arrests (0 if no arrest data for this zip+month)"
+        data_tests:
+          - not_null
+
+      - name: felony_count
+        description: "Felony arrests"
+
+      - name: misdemeanor_count
+        description: "Misdemeanor arrests"
+
+      - name: violation_count
+        description: "Violation-level arrests"
+
+      - name: total_permits_issued
+        description: "Total DOB permits issued (0 if no permit data)"
+        data_tests:
+          - not_null
+
+      - name: active_permit_count
+        description: "Permits active (not expired) as of staging run"
+
+      - name: new_building_count
+        description: "New Building (NB) permit count"
+
+      - name: alteration_count
+        description: "Alteration permit count"
+
+      - name: demolition_count
+        description: "Demolition permit count"
+
+      - name: total_inspections
+        description: "Restaurant inspection visit count (0 if no inspection data)"
+        data_tests:
+          - not_null
+
+      - name: unique_restaurants_inspected
+        description: "Distinct restaurants inspected"
+
+      - name: avg_inspection_score
+        description: "Average inspection score (lower = better) — NULL if no scores"
+
+      - name: pct_grade_a
+        description: "Fraction of graded inspections with grade A (0.0 to 1.0)"
+
+      - name: pct_grade_b
+        description: "Fraction of graded inspections with grade B (0.0 to 1.0)"
+
+      - name: pct_grade_c
+        description: "Fraction of graded inspections with grade C (0.0 to 1.0)"
+
+      - name: critical_violation_count
+        description: "Count of critical violations (violation-row level)"
+
+      - name: neighborhood_pulse_score
+        description: "Composite KPI (0-100, higher = healthier). Weighted: complaints 25%, arrests 25%, permits 20%, food safety 30%."
+        data_tests:
+          - not_null
+
+      - name: _gold_loaded_at
+        description: "Audit: timestamp when Gold layer processed this row"
+
+      - name: _gold_model_name
+        description: "Audit: dbt model name that produced this row"
+
+      - name: _gold_run_id
+        description: "Audit: dbt invocation ID for run-level traceability"
