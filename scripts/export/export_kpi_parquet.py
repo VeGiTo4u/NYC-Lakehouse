@@ -39,7 +39,7 @@ from pyspark.sql.window import Window
 # Parameterized for dev / staging / prod without code changes.
 
 dbutils.widgets.text("catalog", "nyc-lakehouse", "Catalog Name")
-dbutils.widgets.text("schema", "gold", "Schema Name")
+dbutils.widgets.text("schema", "silver_gold", "Schema Name")
 dbutils.widgets.text(
     "s3_export_base",
     "s3://nyc-lakehouse-store/exports/kpi/",
