@@ -193,7 +193,7 @@ def read_gold_table(table_key: str) -> DataFrame:
         Mart data without _gold_* audit metadata columns.
     """
     table_name = SOURCE_TABLES[table_key]
-    full_table_name = f"{catalog}.{schema}.{table_name}"
+    full_table_name = f"`{catalog}`.`{schema}`.`{table_name}`"
 
     print(f"[INFO] Reading Gold table: {full_table_name}")
     df = spark.table(full_table_name)
