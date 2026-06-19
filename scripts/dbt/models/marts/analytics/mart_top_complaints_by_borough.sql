@@ -3,8 +3,7 @@
         materialized='incremental',
         incremental_strategy='merge',
         unique_key=['borough', 'year_month', 'complaint_type'],
-        schema='gold',
-        location_root='s3://nyc-lakehouse-store/gold/analytics'
+        schema='gold'
     )
 -}}
 

@@ -1,8 +1,7 @@
 {{-
     config(
         materialized='table',
-        schema='gold',
-        location_root='s3://nyc-lakehouse-store/gold/core'
+        schema='gold'
     )
 -}}
 
