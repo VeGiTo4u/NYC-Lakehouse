@@ -19,6 +19,7 @@ from .theme import (
     GRADE_COLORS,
     apply_default_layout,
     format_number,
+    safe_float,
 )
 
 
@@ -28,39 +29,31 @@ def grade_distribution_bar(
     year_month: str | None = None,
 ) -> go.Figure:
     """
-    Stacked horizontal bar of grade A/B/C percentages across zip codes.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        From food_compliance_overview. Optionally pre-filtered.
-        Must have columns: zip_code, pct_grade_a, pct_grade_b, pct_grade_c.
-    borough : str or None
-        For the title.
-    year_month : str or None
-        For the title.
+    Horizontal stacked bar of grade A/B/C percentages.
+    Fixed: properly extracts scalar values from aggregation.
     """
-    # Filter out rows with no grade data
-    df = df.dropna(subset=["pct_grade_a"]).copy()
+    df = df.copy()
+
+    # Convert grade columns to numeric, handling None/'None'/Decimal
+    for col in ["pct_grade_a", "pct_grade_b", "pct_grade_c"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df = df.dropna(subset=["pct_grade_a"])
     if df.empty:
         fig = go.Figure()
         apply_default_layout(fig, title="No grade data available", height=300, show_legend=False)
         return fig
 
-    # Aggregate to borough level if many zip codes
+    # Aggregate to summary level if many zip codes
     if len(df) > 20:
-        agg = df.agg(
-            pct_grade_a=("pct_grade_a", "mean"),
-            pct_grade_b=("pct_grade_b", "mean"),
-            pct_grade_c=("pct_grade_c", "mean"),
-        )
-        categories = ["Grade A", "Grade B", "Grade C"]
-        values = [
-            round(agg["pct_grade_a"] * 100, 1),
-            round(agg["pct_grade_b"] * 100, 1),
-            round(agg["pct_grade_c"] * 100, 1),
-        ]
-        colors = [GRADE_COLORS["A"], GRADE_COLORS["B"], GRADE_COLORS["C"]]
+        avg_a = safe_float(df["pct_grade_a"].mean()) * 100
+        avg_b = safe_float(df["pct_grade_b"].mean()) * 100
+        avg_c = safe_float(df["pct_grade_c"].mean()) * 100
+
+        categories = ["Grade C", "Grade B", "Grade A"]
+        values = [round(avg_c, 1), round(avg_b, 1), round(avg_a, 1)]
+        colors = [GRADE_COLORS["C"], GRADE_COLORS["B"], GRADE_COLORS["A"]]
 
         fig = go.Figure(
             go.Bar(
@@ -68,14 +61,14 @@ def grade_distribution_bar(
                 y=categories,
                 orientation="h",
                 marker_color=colors,
+                marker_line=dict(width=0),
                 text=[f"{v:.1f}%" for v in values],
                 textposition="inside",
-                textfont=dict(color=COLORS["white"], size=12),
+                textfont=dict(color=COLORS["bg_primary"], size=12, family="Plus Jakarta Sans"),
                 hovertemplate="%{y}: %{x:.1f}%<extra></extra>",
             )
         )
     else:
-        # Show individual zip codes
         df = df.sort_values("pct_grade_a", ascending=True)
 
         fig = go.Figure()
@@ -91,6 +84,7 @@ def grade_distribution_bar(
                     orientation="h",
                     name=f"Grade {grade}",
                     marker_color=color,
+                    marker_line=dict(width=0),
                     hovertemplate=f"Grade {grade}: " + "%{x:.1f}%<extra></extra>",
                 )
             )
@@ -98,7 +92,7 @@ def grade_distribution_bar(
 
     title_parts = ["Grade Distribution"]
     if borough:
-        title_parts.append(borough)
+        title_parts.append(borough.title())
     if year_month:
         title_parts.append(year_month)
     title = " — ".join(title_parts)
@@ -120,15 +114,7 @@ def food_complaint_trend(
 ) -> go.Figure:
     """
     Dual-axis line: food complaints vs critical violations over time.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        From borough_monthly_trends.
-        Must have columns: year_month, borough, food_complaint_count,
-        critical_violation_count.
-    borough : str or None
-        If provided, filters to that borough.
+    Fixed: titlefont → title_font.
     """
     if borough:
         df = df[df["borough"] == borough].copy()
@@ -151,7 +137,9 @@ def food_complaint_trend(
             y=df["food_complaint_count"],
             mode="lines",
             name="Food Complaints (311)",
-            line=dict(color=COLORS["amber_500"], width=2),
+            line=dict(color=COLORS["amber_400"], width=2.5),
+            fill="tozeroy",
+            fillcolor="rgba(251,191,36,0.08)",
             hovertemplate="%{y:,}<extra>Food Complaints</extra>",
         )
     )
@@ -162,13 +150,13 @@ def food_complaint_trend(
             y=df["critical_violation_count"],
             mode="lines",
             name="Critical Violations",
-            line=dict(color=COLORS["rose_500"], width=2),
+            line=dict(color=COLORS["rose_400"], width=2.5),
             yaxis="y2",
             hovertemplate="%{y:,}<extra>Critical Violations</extra>",
         )
     )
 
-    title_suffix = f" — {borough}" if borough else " — All Boroughs"
+    title_suffix = f" — {borough.title()}" if borough else " — All Boroughs"
     apply_default_layout(
         fig,
         title=f"Food Complaints vs Critical Violations{title_suffix}",
@@ -181,8 +169,8 @@ def food_complaint_trend(
             overlaying="y",
             side="right",
             showgrid=False,
-            tickfont=dict(size=10, color=COLORS["rose_500"]),
-            titlefont=dict(size=11, color=COLORS["rose_500"]),
+            tickfont=dict(size=10, color=COLORS["rose_400"]),
+            title_font=dict(size=11, color=COLORS["rose_400"]),
         ),
     )
     return fig
@@ -194,18 +182,14 @@ def compliance_scatter(
 ) -> go.Figure:
     """
     Scatter: pct_grade_a vs food_complaints_per_inspection per zip.
-    Identifies problem areas — low grade A + high complaint density.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        From food_compliance_overview, filtered to a single year_month.
-        Must have columns: zip_code, pct_grade_a, food_complaints_per_inspection,
-        total_inspections.
-    year_month : str
-        Month for the title.
+    Quadrant labels identify problem areas.
     """
-    df = df.dropna(subset=["pct_grade_a", "food_complaints_per_inspection"]).copy()
+    df = df.copy()
+    for col in ["pct_grade_a", "food_complaints_per_inspection"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df = df.dropna(subset=["pct_grade_a", "food_complaints_per_inspection"])
     if df.empty:
         fig = go.Figure()
         apply_default_layout(fig, title="No compliance data available", height=300, show_legend=False)
@@ -218,41 +202,52 @@ def compliance_scatter(
             mode="markers",
             marker=dict(
                 size=df["total_inspections"].clip(upper=100).apply(
-                    lambda v: max(4, min(v / 5, 16))
+                    lambda v: max(5, min(v / 4, 18))
                 ),
-                color=COLORS["blue_500"],
-                opacity=0.6,
-                line=dict(width=0.5, color=COLORS["slate_200"]),
+                color=COLORS["indigo_400"],
+                opacity=0.7,
+                line=dict(width=1, color=COLORS["indigo_300"]),
             ),
             text=df["zip_code"],
             hovertemplate=(
                 "ZIP %{text}<br>"
                 "Grade A: %{x:.1f}%<br>"
-                "Food Complaints/Inspection: %{y:.2f}"
+                "Complaints/Inspection: %{y:.2f}"
                 "<extra></extra>"
             ),
         )
     )
 
-    # Add quadrant reference lines
+    # Quadrant reference lines
+    median_x = df["pct_grade_a"].median() * 100
+    median_y = df["food_complaints_per_inspection"].median()
+
     fig.add_hline(
-        y=df["food_complaints_per_inspection"].median(),
-        line_dash="dot",
-        line_color=COLORS["gray_400"],
-        line_width=1,
+        y=median_y, line_dash="dot",
+        line_color="rgba(255,255,255,0.15)", line_width=1,
     )
     fig.add_vline(
-        x=df["pct_grade_a"].median() * 100,
-        line_dash="dot",
-        line_color=COLORS["gray_400"],
-        line_width=1,
+        x=median_x, line_dash="dot",
+        line_color="rgba(255,255,255,0.15)", line_width=1,
+    )
+
+    # Quadrant annotations
+    fig.add_annotation(
+        x=95, y=df["food_complaints_per_inspection"].max() * 0.9,
+        text="✓ Low Risk", showarrow=False,
+        font=dict(size=9, color=COLORS["emerald_400"]),
+    )
+    fig.add_annotation(
+        x=5, y=df["food_complaints_per_inspection"].max() * 0.9,
+        text="⚠ High Risk", showarrow=False,
+        font=dict(size=9, color=COLORS["rose_400"]),
     )
 
     apply_default_layout(
         fig,
-        title=f"Food Safety: Grade A Rate vs Complaint Density — {year_month}",
+        title=f"Grade A Rate vs Complaint Density — {year_month}",
         x_title="Grade A Rate (%)",
-        y_title="Food Complaints per Inspection",
+        y_title="Food Complaints / Inspection",
         show_legend=False,
     )
     return fig
@@ -263,18 +258,9 @@ def inspection_volume_bar(
     borough: str | None = None,
 ) -> go.Figure:
     """
-    Bar chart of monthly inspection volume and unique restaurants inspected.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        From food_compliance_overview, aggregated to month level.
-        Must have columns: year_month, total_inspections,
-        unique_restaurants_inspected.
-    borough : str or None
-        For the title.
+    Bar + line: monthly inspection volume and unique restaurants inspected.
+    Fixed: titlefont → title_font.
     """
-    # Aggregate to month level
     agg = (
         df.groupby("year_month", as_index=False)
         .agg(
@@ -291,7 +277,9 @@ def inspection_volume_bar(
             x=agg["year_month"],
             y=agg["total_inspections"],
             name="Inspections",
-            marker_color=COLORS["teal_500"],
+            marker_color=COLORS["emerald_400"],
+            marker_line=dict(width=0),
+            opacity=0.8,
             hovertemplate="%{y:,}<extra>Inspections</extra>",
         )
     )
@@ -302,14 +290,14 @@ def inspection_volume_bar(
             y=agg["unique_restaurants_inspected"],
             mode="lines+markers",
             name="Unique Restaurants",
-            line=dict(color=COLORS["blue_600"], width=2),
-            marker=dict(size=4),
+            line=dict(color=COLORS["indigo_400"], width=2.5),
+            marker=dict(size=4, color=COLORS["indigo_400"]),
             yaxis="y2",
             hovertemplate="%{y:,}<extra>Unique Restaurants</extra>",
         )
     )
 
-    title_suffix = f" — {borough}" if borough else ""
+    title_suffix = f" — {borough.title()}" if borough else ""
     apply_default_layout(
         fig,
         title=f"Inspection Volume{title_suffix}",
@@ -322,8 +310,51 @@ def inspection_volume_bar(
             overlaying="y",
             side="right",
             showgrid=False,
-            tickfont=dict(size=10, color=COLORS["blue_600"]),
-            titlefont=dict(size=11, color=COLORS["blue_600"]),
+            tickfont=dict(size=10, color=COLORS["indigo_400"]),
+            title_font=dict(size=11, color=COLORS["indigo_400"]),
         ),
     )
+    return fig
+
+
+def grade_trend_sparkline(
+    df: pd.DataFrame,
+    borough: str | None = None,
+) -> go.Figure:
+    """
+    Sparkline showing Grade A rate trend over time.
+    """
+    df = df.copy()
+    df["pct_grade_a"] = pd.to_numeric(df["pct_grade_a"], errors="coerce")
+    df = df.dropna(subset=["pct_grade_a"])
+
+    agg = (
+        df.groupby("year_month", as_index=False)
+        .agg(avg_grade_a=("pct_grade_a", "mean"))
+        .sort_values("year_month")
+    )
+
+    agg["avg_grade_a"] = agg["avg_grade_a"] * 100
+
+    fig = go.Figure(
+        go.Scatter(
+            x=agg["year_month"],
+            y=agg["avg_grade_a"],
+            mode="lines",
+            line=dict(color=COLORS["emerald_400"], width=2.5),
+            fill="tozeroy",
+            fillcolor="rgba(52,211,153,0.08)",
+            hovertemplate="%{x}<br>Grade A: %{y:.1f}%<extra></extra>",
+        )
+    )
+
+    apply_default_layout(
+        fig,
+        title="Grade A Rate Trend",
+        x_title="",
+        y_title="Grade A %",
+        show_legend=False,
+        height=280,
+    )
+    fig.update_yaxes(range=[0, 100])
     return fig

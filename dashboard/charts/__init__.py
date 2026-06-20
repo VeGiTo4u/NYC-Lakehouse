@@ -1,1 +1,1 @@
-# Chart factory package for NYC Neighborhood Pulse dashboard.
+"""Chart factory modules for NYC Neighborhood Pulse dashboard."""
