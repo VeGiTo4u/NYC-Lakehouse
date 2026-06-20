@@ -3,7 +3,7 @@
         materialized='incremental',
         incremental_strategy='merge',
         unique_key=['zip_code', 'year_month'],
-        schema='gold'
+        schema='marts'
     )
 -}}
 
@@ -22,8 +22,8 @@
     Unique key: [zip_code, year_month]
     Strategy:  Incremental MERGE with lookback
     Sources:   int_arrests_by_zip_month + int_permits_by_zip_month
-    Schema:    gold
-    Target:    nyc-lakehouse.gold.mart_safety_infrastructure_corr
+    Schema:    marts
+    Target:    nyc-lakehouse.marts.mart_safety_infrastructure_corr
 
     References:
       - High-Level Architecture §7.6 (mart_safety_infrastructure_corr)

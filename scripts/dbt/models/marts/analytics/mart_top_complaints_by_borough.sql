@@ -3,7 +3,7 @@
         materialized='incremental',
         incremental_strategy='merge',
         unique_key=['borough', 'year_month', 'complaint_type'],
-        schema='gold'
+        schema='marts'
     )
 -}}
 
@@ -21,8 +21,8 @@
     Unique key: [borough, year_month, complaint_type]
     Strategy:  Incremental MERGE with 90-day lookback
     Source:    stg_311_requests
-    Schema:    gold
-    Target:    nyc-lakehouse.gold.mart_top_complaints_by_borough
+    Schema:    marts
+    Target:    nyc-lakehouse.marts.mart_top_complaints_by_borough
 
     References:
       - High-Level Architecture §7.6 (mart_top_complaints_by_borough)

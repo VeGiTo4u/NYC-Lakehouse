@@ -3,7 +3,7 @@
         materialized='incremental',
         incremental_strategy='merge',
         unique_key=['zip_code', 'year_month'],
-        schema='gold'
+        schema='marts'
     )
 -}}
 
@@ -22,8 +22,8 @@
     Unique key: [zip_code, year_month]
     Strategy:  Incremental MERGE with 90-day lookback
     Sources:   fact_neighborhood_monthly + dim_zip_codes + dim_date
-    Schema:    gold
-    Target:    nyc-lakehouse.gold.mart_neighborhood_pulse
+    Schema:    marts
+    Target:    nyc-lakehouse.marts.mart_neighborhood_pulse
 
     References:
       - High-Level Architecture §7.6 (mart_neighborhood_pulse)

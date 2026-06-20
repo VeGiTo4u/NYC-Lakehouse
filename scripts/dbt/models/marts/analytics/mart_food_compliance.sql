@@ -3,7 +3,7 @@
         materialized='incremental',
         incremental_strategy='merge',
         unique_key=['zip_code', 'year_month'],
-        schema='gold'
+        schema='marts'
     )
 -}}
 
@@ -22,8 +22,8 @@
     Unique key: [zip_code, year_month]
     Strategy:  Incremental MERGE with 90-day lookback
     Sources:   int_inspections_by_zip_month + int_311_by_zip_month
-    Schema:    gold
-    Target:    nyc-lakehouse.gold.mart_food_compliance
+    Schema:    marts
+    Target:    nyc-lakehouse.marts.mart_food_compliance
 
     References:
       - High-Level Architecture §7.6 (mart_food_compliance)
