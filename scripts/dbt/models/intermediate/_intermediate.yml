@@ -160,45 +160,43 @@ models:
 
       - name: critical_violation_count
         description: "Count of critical violations (at violation-row level, not deduplicated to visit level)"
-
   # ═══════════════════════════════════════════════════════════════════
   # int_complaint_permit_corr
   # ═══════════════════════════════════════════════════════════════════
   - name: int_complaint_permit_corr
     description: >
-      Cross-domain correlation model joining 311 complaints with DOB permits
-      at zip_code + year_month grain. Uses FULL OUTER JOIN to preserve zip codes
-      appearing in only one dataset. Enables Q16 analysis: does construction
-      activity predict noise complaint spikes? Uses 90-day lookback.
+      Cross-domain join of 311 complaints and DOB permits at zip_code + year_month grain.
+      Powers analytical question Q16: "Does construction activity predict a rise in
+      noise complaints 1–2 months later?" (lag analysis done in analyses/).
+      LEFT JOIN from complaints onto permits — zip+months with complaints but no permits
+      produce COALESCE(0) permit values. Uses 90-day lookback on incremental runs.
       Grain: one row per zip_code per year_month.
     columns:
       - name: zip_code
-        description: "COALESCE of complaint and permit zip codes — grain key 1"
+        description: "5-digit NYC zip code — grain key 1"
         data_tests:
           - not_null
 
       - name: year_month
-        description: "COALESCE of complaint and permit year_month — grain key 2"
+        description: "Year-month string (yyyy-MM format) — grain key 2"
         data_tests:
           - not_null
 
-      - name: total_complaints
-        description: "Total 311 complaints — NULL when zip has no complaints that month"
-
       - name: noise_complaints
-        description: "Noise-related 311 complaints — NULL when zip has no complaints"
+        description: "Count of noise-related 311 complaints in this zip+month"
 
       - name: construction_complaints
-        description: "Construction/building 311 complaints — NULL when zip has no complaints"
+        description: "Count of construction/building-related 311 complaints in this zip+month"
 
-      - name: avg_resolution_hours
-        description: "Average complaint resolution time — NULL when no complaints or no closures"
+      - name: total_complaints
+        description: "Total 311 complaints in this zip+month"
 
       - name: total_permits_issued
-        description: "Total DOB permits issued — NULL when zip has no permits that month"
+        description: "Total DOB permits issued in this zip+month (0 if no permits)"
 
       - name: active_permits
-        description: "Active DOB permits — NULL when zip has no permits"
+        description: "Count of DOB permits still active (expiration_date >= run date) in this zip+month"
 
       - name: new_building_count
-        description: "New Building permits — NULL when zip has no permits"
+        description: "Count of new building permits (job_type = 'NB') in this zip+month"
+

@@ -60,12 +60,7 @@ GOLD_AUDIT_COLUMNS: List[str] = [
     "_gold_run_id",
 ]
 
-SOURCE_TABLES: Dict[str, str] = {
-    "mart_neighborhood_pulse":           "mart_neighborhood_pulse",
-    "mart_safety_infrastructure_corr":   "mart_safety_infrastructure_corr",
-    "mart_food_compliance":              "mart_food_compliance",
-    "mart_top_complaints_by_borough":    "mart_top_complaints_by_borough",
-}
+# ponytail: SOURCE_TABLES identity map removed — table_key IS the table name
 
 EXPORT_FILES: List[str] = [
     "neighborhood_pulse_summary.parquet",
@@ -181,19 +176,9 @@ print(f"  Run timestamp (UTC)  : {run_timestamp}")
 def read_gold_table(table_key: str) -> DataFrame:
     """
     Reads a Gold mart table via spark.table() and strips dbt audit columns.
-
-    Parameters
-    ----------
-    table_key : str
-        Key in SOURCE_TABLES mapping the logical mart name.
-
-    Returns
-    -------
-    DataFrame
-        Mart data without _gold_* audit metadata columns.
+    table_key is used directly as the table name.
     """
-    table_name = SOURCE_TABLES[table_key]
-    full_table_name = f"`{catalog}`.`{schema}`.`{table_name}`"
+    full_table_name = f"`{catalog}`.`{schema}`.`{table_key}`"
 
     print(f"[INFO] Reading Gold table: {full_table_name}")
     df = spark.table(full_table_name)
@@ -324,19 +309,7 @@ def build_safety_infrastructure_corr(df: DataFrame) -> DataFrame:
 
 # COMMAND ----------
 
-# ------------------------------------------------------------
-# build_food_compliance_overview
-# ------------------------------------------------------------
-def build_food_compliance_overview(df: DataFrame) -> DataFrame:
-    """
-    Zip-level food compliance passthrough.
-
-    Source: mart_food_compliance
-    Maintains uniform dashboard/data/*.parquet interface — no transforms needed.
-    """
-    row_count = df.count()
-    print(f"[SUCCESS] Built food_compliance_overview: {row_count:,} rows (passthrough)")
-    return df
+# ponytail: build_food_compliance_overview removed — was identity function with a redundant .count()
 
 # COMMAND ----------
 
@@ -541,7 +514,7 @@ exports: Dict[str, DataFrame] = {
     "neighborhood_pulse_summary.parquet": build_neighborhood_pulse_summary(pulse_df),
     "borough_monthly_trends.parquet": build_borough_monthly_trends(pulse_df),
     "safety_infrastructure_corr.parquet": build_safety_infrastructure_corr(safety_df),
-    "food_compliance_overview.parquet": build_food_compliance_overview(food_df),
+    "food_compliance_overview.parquet": food_df,  # ponytail: passthrough, no transform needed
     "complaint_type_rankings.parquet": build_complaint_type_rankings(complaints_df),
 }
 

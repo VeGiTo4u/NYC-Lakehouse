@@ -61,7 +61,11 @@ models:
         description: "Construction/building-related 311 complaints"
 
       - name: avg_resolution_hours
-        description: "Average complaint resolution time in hours"
+        description: >
+          Average hours between complaint creation and closure.
+          NULL when no complaints were closed in this zip+month.
+          Not COALESCE(0) by design — zero would imply instant resolution.
+          Use COALESCE or filter NULLs at the point of use.
 
       - name: open_complaint_count
         description: "Open complaints count"

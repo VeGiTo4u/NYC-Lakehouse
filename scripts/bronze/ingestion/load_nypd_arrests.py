@@ -40,8 +40,6 @@
 
 # -- Widgets -----------------------------------------------
 
-# -- Widgets -----------------------------------------------
-
 dbutils.widgets.text("catalog", "nyc-lakehouse", "Catalog Name")
 dbutils.widgets.text("schema", "bronze", "Schema Name")
 dbutils.widgets.text("checkpoint_path_historic", "s3://nyc-lakehouse-store/checkpoints/bronze/nypd_historic/","Checkpoint Historic")
@@ -96,7 +94,7 @@ rows_historic = load_bronze_autoloader(
     checkpoint_path = checkpoint_path_historic,
     delta_location  = s3_target_path,
     etl_meta        = etl_meta,
-    table_name      = f"{table_name}",
+    table_name      = table_name,
 )
 
 # COMMAND ----------
@@ -113,7 +111,7 @@ rows_ytd = load_bronze_autoloader(
     checkpoint_path = checkpoint_path_ytd,
     delta_location  = s3_target_path,
     etl_meta        = etl_meta,
-    table_name      = f"{table_name}",
+    table_name      = table_name,
 )
 
 # COMMAND ----------

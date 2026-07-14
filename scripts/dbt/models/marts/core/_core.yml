@@ -217,7 +217,12 @@ models:
         description: "Construction/building-related 311 complaints"
 
       - name: avg_resolution_hours
-        description: "Average hours between complaint creation and closure — NULL if no closed complaints"
+        description: >
+          Average hours between complaint creation and closure.
+          NULL when no complaints were closed in this zip+month (i.e. all were Open or Pending).
+          Intentionally not COALESCE(0) — zero hours would mean "resolved instantly", which is
+          misleading. Consumers: use COALESCE(avg_resolution_hours, 0) or exclude NULLs depending
+          on context. Not used in the neighborhood_pulse_score formula.
 
       - name: open_complaint_count
         description: "Count of complaints with status = Open"

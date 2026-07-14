@@ -21,19 +21,17 @@
 
 {% macro safe_divide(numerator, denominator, precision=none) %}
 
+    {% set expr %}
+    CASE
+        WHEN {{ denominator }} = 0 OR {{ denominator }} IS NULL THEN NULL
+        ELSE CAST({{ numerator }} AS DOUBLE) / {{ denominator }}
+    END
+    {% endset %}
+
     {% if precision is not none %}
-        ROUND(
-            CASE
-                WHEN {{ denominator }} = 0 OR {{ denominator }} IS NULL THEN NULL
-                ELSE CAST({{ numerator }} AS DOUBLE) / {{ denominator }}
-            END,
-            {{ precision }}
-        )
+        ROUND({{ expr }}, {{ precision }})
     {% else %}
-        CASE
-            WHEN {{ denominator }} = 0 OR {{ denominator }} IS NULL THEN NULL
-            ELSE CAST({{ numerator }} AS DOUBLE) / {{ denominator }}
-        END
+        {{ expr }}
     {% endif %}
 
 {% endmacro %}

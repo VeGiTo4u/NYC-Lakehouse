@@ -450,23 +450,23 @@ def post_write_validation_bronze(
                 f"Available columns: {df_val.columns}"
             )
 
-        # Single-pass aggregation -- all NULL checks in one Spark action
+        # Single-pass aggregation — all NULL checks in one Spark action
         null_counts = df_val.select([
             F.count(F.when(F.col(c).isNull(), 1)).alias(c)
             for c in meta_cols
         ]).collect()[0]
 
-        all_passed = True
+        failed = []
         for col_name in meta_cols:
             null_count = null_counts[col_name]
             status     = "[PASS]" if null_count == 0 else "[FAIL]"
             if null_count > 0:
-                all_passed = False
+                failed.append(col_name)
             print(f"  {status} {col_name}: {null_count:,} NULLs")
 
-        if not all_passed:
+        if failed:
             raise ValueError(
-                "FAILED: NULL values found in ETL metadata columns. "
+                f"FAILED: NULL values in ETL metadata columns {failed}. "
                 "Check context resolution and append_etl_metadata logic."
             )
 
@@ -515,17 +515,4 @@ def print_summary(
 # COMMAND ----------
 
 print("[INFO] bronze_utils loaded successfully")
-print("[INFO] Available functions:")
-_utils_functions = [
-    "resolve_etl_metadata()",
-    "validate_inputs()",
-    "build_table_name()",
-    "setup_bronze_schema()",
-    "append_etl_metadata()",
-    "load_bronze_autoloader()",
-    "register_table()",
-    "post_write_validation_bronze()",
-    "print_summary()",
-]
-for fn in _utils_functions:
-    print(f"  - {fn}")
+
